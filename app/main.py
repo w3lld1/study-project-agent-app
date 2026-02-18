@@ -55,10 +55,7 @@ async def chat(request: ChatRequest):
     input_state = {
         "messages": [HumanMessage(content=request.message)],
         "user_query": request.message,
-        "intent": "",
-        "coin": "",
-        "api_data": {},
-        "response": "",
+        "thread_id": thread_id,
     }
 
     try:

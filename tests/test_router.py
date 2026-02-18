@@ -60,19 +60,38 @@ async def test_classify_intent_invalid_json(mock_llm):
 
 
 @pytest.mark.parametrize(
-    "intent,expected",
+    "intent,coin,expected",
     [
-        ("price", "price"),
-        ("news", "news"),
-        ("analytics", "analytics"),
-        ("chat", "chat"),
-        ("unknown", "chat"),
-        ("", "chat"),
+        ("price", "bitcoin", "price"),
+        ("price", "", "clarify_coin"),
+        ("news", "ethereum", "news"),
+        ("news", "", "clarify_coin"),
+        ("analytics", "solana", "analytics"),
+        ("analytics", "", "clarify_coin"),
+        ("chat", "", "chat"),
+        ("unknown", "", "chat"),
+        ("", "", "chat"),
     ],
 )
 @pytest.mark.asyncio
-async def test_route_by_intent(intent, expected):
-    assert await route_by_intent({"intent": intent}) == expected
+async def test_route_by_intent(intent, coin, expected):
+    assert await route_by_intent({"intent": intent, "coin": coin}) == expected
+
+
+@pytest.mark.asyncio
+async def test_classify_intent_uses_previous_coin_for_analytics(mock_llm):
+    mock_llm.ainvoke.return_value = MagicMock(content='{"intent": "analytics", "coin": ""}')
+    with patch("app.agent.router.get_llm", return_value=mock_llm):
+        result = await classify_intent(
+            {
+                "user_query": "если он сейчас дешево стоит, брать?",
+                "coin": "bitcoin",
+                "messages": [],
+            }
+        )
+
+    assert result["intent"] == "analytics"
+    assert result["coin"] == "bitcoin"
 
 
 # ─── route_needs_search ───

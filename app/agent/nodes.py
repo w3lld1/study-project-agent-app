@@ -1,6 +1,8 @@
 """Функции узлов графа LangGraph."""
 
+import asyncio
 import json
+import logging
 from datetime import datetime, timezone
 from numbers import Real
 
@@ -10,6 +12,8 @@ from app.llm.gigachat import get_llm
 from app.tools.coingecko import get_market_data, get_price
 from app.tools.news import get_crypto_news
 from app.tools.websearch import search_web
+
+LOGGER = logging.getLogger(__name__)
 
 # ─── Узел: получение цены ───
 
@@ -21,6 +25,7 @@ async def get_price_node(state: dict) -> dict:
     try:
         data = await get_price(coin)
     except Exception as e:
+        _log_node_error("get_price", state, e)
         data = {"error": str(e)}
     if isinstance(data, dict):
         data["_api_calls"] = [api_call]
@@ -37,6 +42,7 @@ async def get_news_node(state: dict) -> dict:
     try:
         articles = await get_crypto_news(coin)
     except Exception as e:
+        _log_node_error("get_news", state, e)
         articles = [{"error": str(e)}]
     return {"api_data": {"articles": articles, "_api_calls": [api_call]}}
 
@@ -48,16 +54,23 @@ async def get_analytics_data_node(state: dict) -> dict:
     """Собирает рыночные данные и новости для аналитики."""
     coin = state.get("coin", "bitcoin")
     api_calls = ["coingecko:/coins/{id}", "newsapi:/v2/everything"]
+    market_result, news_result = await asyncio.gather(
+        get_market_data(coin),
+        get_crypto_news(coin, max_results=3),
+        return_exceptions=True,
+    )
 
-    try:
-        market = await get_market_data(coin)
-    except Exception as e:
-        market = {"error": str(e)}
+    if isinstance(market_result, Exception):
+        _log_node_error("get_analytics_data.market", state, market_result)
+        market = {"error": str(market_result)}
+    else:
+        market = market_result
 
-    try:
-        news = await get_crypto_news(coin, max_results=3)
-    except Exception as e:
-        news = [{"error": str(e)}]
+    if isinstance(news_result, Exception):
+        _log_node_error("get_analytics_data.news", state, news_result)
+        news = [{"error": str(news_result)}]
+    else:
+        news = news_result
 
     return {"api_data": {"market": market, "news": news, "_api_calls": api_calls}}
 
@@ -72,6 +85,7 @@ async def analytics_search_node(state: dict) -> dict:
     try:
         results = await search_web(query, max_results=3)
     except Exception as e:
+        _log_node_error("analytics_search", state, e)
         results = [{"error": str(e)}]
 
     api_data = state.get("api_data", {})
@@ -127,8 +141,29 @@ async def web_search_node(state: dict) -> dict:
     try:
         results = await search_web(query, max_results=5)
     except Exception as e:
+        _log_node_error("web_search", state, e)
         results = [{"error": str(e)}]
     return {"api_data": {"web_results": results, "_api_calls": ["ddgs:text"]}}
+
+
+async def clarify_coin_node(state: dict) -> dict:
+    """Просит пользователя уточнить монету, если intent требует coin."""
+
+    intent = state.get("intent", "")
+    topic_by_intent = {
+        "price": "цену",
+        "news": "новости",
+        "analytics": "аналитику",
+    }
+    topic = topic_by_intent.get(intent, "информацию")
+    response = (
+        f"Уточните, пожалуйста, о какой криптовалюте речь, чтобы я мог дать {topic}. "
+        "Например: Bitcoin, ETH, SOL."
+    )
+    return {
+        "response": response,
+        "messages": [AIMessage(content=response)],
+    }
 
 
 # ─── Узел: генерация ответа (для price, news, chat) ───
@@ -239,3 +274,20 @@ def _build_analytics_search_query(coin: str) -> str:
 
     current_year = datetime.now(timezone.utc).year
     return f"{coin} crypto analysis forecast {current_year}"
+
+
+def _log_node_error(node_name: str, state: dict, error: Exception) -> None:
+    """Логирует ошибку узла с контекстом запроса."""
+
+    query = " ".join(str(state.get("user_query", "")).split())
+    query_preview = query if len(query) <= 160 else f"{query[:157]}..."
+    LOGGER.error(
+        "[node:%s] external call failed | thread_id=%r intent=%r coin=%r query=%r error=%s",
+        node_name,
+        state.get("thread_id", ""),
+        state.get("intent", ""),
+        state.get("coin", ""),
+        query_preview,
+        error,
+        exc_info=error,
+    )

@@ -3,7 +3,7 @@
 import json
 import re
 
-from langchain_core.messages import HumanMessage, SystemMessage
+from langchain_core.messages import BaseMessage, HumanMessage, SystemMessage
 
 from app.llm.gigachat import get_llm
 
@@ -42,10 +42,20 @@ async def classify_intent(state: dict) -> dict:
     """Классифицирует intent пользователя через GigaChat."""
     llm = get_llm()
     user_query = state["user_query"]
+    previous_coin = str(state.get("coin", "") or "").strip()
+    history = _format_recent_history(state.get("messages", []))
 
     messages = [
         SystemMessage(content=CLASSIFY_PROMPT),
-        HumanMessage(content=user_query),
+        HumanMessage(
+            content=(
+                f"История диалога (последние сообщения):\n{history}\n\n"
+                f"Текущий вопрос пользователя: {user_query}\n\n"
+                "Если в текущем вопросе используются местоимения ('он', 'она', "
+                "'эта монета', 'она сейчас дешёвая') и явная монета не названа, "
+                "используй монету из истории диалога."
+            )
+        ),
     ]
     result = await llm.ainvoke(messages)
 
@@ -57,10 +67,13 @@ async def classify_intent(state: dict) -> dict:
             text = text.split("\n", 1)[1].rsplit("```", 1)[0].strip()
         parsed = json.loads(text)
         intent = parsed.get("intent", "chat")
-        coin = parsed.get("coin", "")
+        coin = str(parsed.get("coin", "") or "").strip()
     except (json.JSONDecodeError, KeyError):
         intent = "chat"
         coin = ""
+
+    if not coin and intent in {"price", "news", "analytics"} and previous_coin:
+        coin = previous_coin
 
     return {"intent": intent, "coin": coin}
 
@@ -68,6 +81,9 @@ async def classify_intent(state: dict) -> dict:
 async def route_by_intent(state: dict) -> str:
     """Роутер: направляет по intent."""
     intent = state.get("intent", "chat")
+    coin = str(state.get("coin", "") or "").strip()
+    if intent in {"price", "news", "analytics"} and not coin:
+        return "clarify_coin"
     if intent in ("price", "news", "analytics", "chat"):
         return intent
     return "chat"
@@ -116,3 +132,40 @@ def _parse_yes_no_answer(raw_answer: str) -> str | None:
     if answer in {"yes", "no"}:
         return answer
     return None
+
+
+def _format_recent_history(messages: list[object], limit: int = 6) -> str:
+    """Форматирует последние сообщения диалога для контекстной классификации."""
+
+    if not messages:
+        return "(история пуста)"
+
+    lines: list[str] = []
+    for msg in messages[-limit:]:
+        if isinstance(msg, BaseMessage):
+            role = _message_role(msg)
+            raw_content = msg.content
+        elif isinstance(msg, dict):
+            role = str(msg.get("type", "message"))
+            raw_content = msg.get("content", "")
+        else:
+            continue
+
+        content = raw_content if isinstance(raw_content, str) else str(raw_content)
+        compact_content = " ".join(content.split())
+        if not compact_content:
+            continue
+        lines.append(f"{role}: {compact_content}")
+
+    return "\n".join(lines) if lines else "(история пуста)"
+
+
+def _message_role(msg: BaseMessage) -> str:
+    """Преобразует тип сообщения в читаемую роль для промпта."""
+
+    msg_type = getattr(msg, "type", "")
+    if msg_type == "human":
+        return "user"
+    if msg_type == "ai":
+        return "assistant"
+    return msg_type or "message"

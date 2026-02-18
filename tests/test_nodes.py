@@ -1,5 +1,6 @@
 """Тесты для узлов графа (nodes)."""
 
+import asyncio
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -8,6 +9,7 @@ import pytest
 from app.agent.nodes import (
     analyze_node,
     analytics_search_node,
+    clarify_coin_node,
     generate_response_node,
     get_analytics_data_node,
     get_news_node,
@@ -90,6 +92,67 @@ async def test_get_analytics_data_node_success():
     ]
 
 
+@pytest.mark.asyncio
+async def test_get_analytics_data_node_uses_parallel_gather():
+    mock_market = {"price_usd": 50000.0}
+    mock_news = [{"title": "News 1"}]
+    with (
+        patch(
+            "app.agent.nodes.get_market_data",
+            new_callable=AsyncMock,
+            return_value=mock_market,
+        ),
+        patch(
+            "app.agent.nodes.get_crypto_news",
+            new_callable=AsyncMock,
+            return_value=mock_news,
+        ),
+        patch("app.agent.nodes.asyncio.gather", wraps=asyncio.gather) as gather_spy,
+    ):
+        result = await get_analytics_data_node({"coin": "bitcoin"})
+
+    assert result["api_data"]["market"] == mock_market
+    assert result["api_data"]["news"] == mock_news
+    gather_spy.assert_called_once()
+    assert gather_spy.call_args.kwargs.get("return_exceptions") is True
+
+
+@pytest.mark.asyncio
+async def test_get_analytics_data_node_runs_market_and_news_in_parallel():
+    started = {"market": False, "news": False}
+    both_started = asyncio.Event()
+    release = asyncio.Event()
+
+    async def fake_market(_coin):
+        started["market"] = True
+        if started["news"]:
+            both_started.set()
+        await both_started.wait()
+        await release.wait()
+        return {"price_usd": 50000.0}
+
+    async def fake_news(_coin, max_results=3):
+        assert max_results == 3
+        started["news"] = True
+        if started["market"]:
+            both_started.set()
+        await both_started.wait()
+        await release.wait()
+        return [{"title": "News 1"}]
+
+    with (
+        patch("app.agent.nodes.get_market_data", side_effect=fake_market),
+        patch("app.agent.nodes.get_crypto_news", side_effect=fake_news),
+    ):
+        task = asyncio.create_task(get_analytics_data_node({"coin": "bitcoin"}))
+        await asyncio.wait_for(both_started.wait(), timeout=0.2)
+        release.set()
+        result = await task
+
+    assert result["api_data"]["market"]["price_usd"] == 50000.0
+    assert result["api_data"]["news"][0]["title"] == "News 1"
+
+
 # ─── analytics_search_node ───
 
 
@@ -159,6 +222,13 @@ async def test_web_search_node_success():
 
 
 # ─── generate_response_node ───
+
+
+@pytest.mark.asyncio
+async def test_clarify_coin_node():
+    result = await clarify_coin_node({"intent": "analytics"})
+    assert "Уточните" in result["response"]
+    assert len(result["messages"]) == 1
 
 
 @pytest.mark.asyncio

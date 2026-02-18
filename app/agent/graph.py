@@ -14,6 +14,7 @@ from langgraph.graph import END, StateGraph
 from app.agent.nodes import (
     analyze_node,
     analytics_search_node,
+    clarify_coin_node,
     generate_response_node,
     get_analytics_data_node,
     get_news_node,
@@ -130,6 +131,9 @@ def build_graph() -> StateGraph:
     graph.add_node("analyze", _wrap_step("analyze", analyze_node, debug_enabled))
     graph.add_node("web_search", _wrap_step("web_search", web_search_node, debug_enabled))
     graph.add_node(
+        "clarify_coin", _wrap_step("clarify_coin", clarify_coin_node, debug_enabled)
+    )
+    graph.add_node(
         "generate_response",
         _wrap_step("generate_response", generate_response_node, debug_enabled),
     )
@@ -146,6 +150,7 @@ def build_graph() -> StateGraph:
             "news": "get_news",
             "analytics": "get_analytics_data",
             "chat": "web_search",
+            "clarify_coin": "clarify_coin",
         },
     )
 
@@ -157,6 +162,9 @@ def build_graph() -> StateGraph:
 
     # chat (web_search) -> generate_response -> END
     graph.add_edge("web_search", "generate_response")
+
+    # clarify_coin -> END
+    graph.add_edge("clarify_coin", END)
 
     # generate_response -> END
     graph.add_edge("generate_response", END)

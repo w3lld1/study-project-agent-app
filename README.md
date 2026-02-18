@@ -26,6 +26,7 @@ START -> [classify_intent] ---> [get_price]           --> [generate_response] ->
                            |--> [get_analytics_data]  --> [needs_search?] -yes-> [analytics_search] -> [analyze] -> END
                            |                              -no-> [analyze] -> END
                            |--> [web_search]          --> [generate_response] -> END
+                           |--> [clarify_coin]        --> END
 ```
 
 - **5+ путей** через граф (основной роутер: 4 пути + вложенный роутер в аналитике: 2 пути)

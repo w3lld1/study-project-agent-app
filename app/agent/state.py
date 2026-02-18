@@ -11,6 +11,7 @@ class AgentState(TypedDict):
 
     messages: Annotated[list, add_messages]
     user_query: str
+    thread_id: str
     intent: str
     coin: str
     api_data: dict
