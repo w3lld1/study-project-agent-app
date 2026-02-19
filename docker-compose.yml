@@ -1,0 +1,24 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: crypto-consultant-api
+    restart: unless-stopped
+    env_file:
+      - ./.env
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+    ports:
+      - "8000:8000"
+
+  bot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: crypto-consultant-bot
+    restart: unless-stopped
+    env_file:
+      - ./.env
+    command: ["python", "-m", "app.bot.telegram"]
+    depends_on:
+      - api
