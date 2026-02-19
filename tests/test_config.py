@@ -32,15 +32,17 @@ def test_settings_bool_parsing_from_env(monkeypatch):
     assert settings.gigachat_verify_ssl_certs is True
 
 
-def test_require_gigachat_credentials_raises_on_missing():
-    settings = Settings(gigachat_credentials="")
+def test_require_gigachat_credentials_raises_on_missing(monkeypatch):
+    monkeypatch.delenv("GIGACHAT_CREDENTIALS", raising=False)
+    settings = Settings()
 
     with pytest.raises(RuntimeError, match="GIGACHAT_CREDENTIALS"):
         require_gigachat_credentials(settings)
 
 
-def test_require_telegram_bot_token_raises_on_missing():
-    settings = Settings(telegram_bot_token="   ")
+def test_require_telegram_bot_token_raises_on_missing(monkeypatch):
+    monkeypatch.delenv("TELEGRAM_BOT_TOKEN", raising=False)
+    settings = Settings()
 
     with pytest.raises(RuntimeError, match="TELEGRAM_BOT_TOKEN"):
         require_telegram_bot_token(settings)

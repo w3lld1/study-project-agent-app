@@ -15,7 +15,9 @@ def reset_llm_singleton():
     gigachat._llm_instance = None
 
 
-def test_get_llm_returns_singleton():
+def test_get_llm_returns_singleton(monkeypatch):
+    monkeypatch.setenv("GIGACHAT_CREDENTIALS", "test-credentials")
+
     llm_instance = MagicMock()
     with patch("app.llm.gigachat.GigaChat", return_value=llm_instance) as mock_ctor:
         first = gigachat.get_llm()

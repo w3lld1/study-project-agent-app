@@ -1,5 +1,6 @@
 """Тесты для tools: coingecko, news, websearch."""
 
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
@@ -137,7 +138,7 @@ async def test_get_crypto_news_success(mock_httpx_response):
 
     with (
         patch("app.tools.news.httpx.AsyncClient", return_value=mock_client),
-        patch("app.tools.news.os.getenv", return_value="fake-api-key"),
+        patch("app.tools.news.get_settings", return_value=SimpleNamespace(news_api_key="fake-api-key")),
     ):
         result = await get_crypto_news("bitcoin")
 
@@ -160,7 +161,7 @@ async def test_get_crypto_news_clamps_page_size(mock_httpx_response):
 
     with (
         patch("app.tools.news.httpx.AsyncClient", return_value=mock_client),
-        patch("app.tools.news.os.getenv", return_value="fake-api-key"),
+        patch("app.tools.news.get_settings", return_value=SimpleNamespace(news_api_key="fake-api-key")),
     ):
         await get_crypto_news("bitcoin", max_results=999)
         high_kwargs = mock_client.get.await_args.kwargs
@@ -184,7 +185,7 @@ async def test_get_crypto_news_http_error_message(mock_httpx_response):
 
     with (
         patch("app.tools.news.httpx.AsyncClient", return_value=mock_client),
-        patch("app.tools.news.os.getenv", return_value="fake-api-key"),
+        patch("app.tools.news.get_settings", return_value=SimpleNamespace(news_api_key="fake-api-key")),
     ):
         with pytest.raises(RuntimeError) as exc_info:
             await get_crypto_news("bitcoin")
@@ -195,7 +196,7 @@ async def test_get_crypto_news_http_error_message(mock_httpx_response):
 
 @pytest.mark.asyncio
 async def test_get_crypto_news_no_api_key():
-    with patch("app.tools.news.os.getenv", return_value=None):
+    with patch("app.tools.news.get_settings", return_value=SimpleNamespace(news_api_key=None)):
         result = await get_crypto_news("bitcoin")
 
     assert len(result) == 1
