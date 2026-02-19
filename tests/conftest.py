@@ -5,6 +5,17 @@ from unittest.mock import AsyncMock, MagicMock
 import httpx
 import pytest
 
+from app.config import get_settings
+
+
+@pytest.fixture(autouse=True)
+def clear_settings_cache():
+    """Сбрасывает кэш settings между тестами для корректных env override."""
+
+    get_settings.cache_clear()
+    yield
+    get_settings.cache_clear()
+
 
 @pytest.fixture
 def mock_llm():
