@@ -2,6 +2,10 @@
 
 ИИ-агент для консультаций по инвестициям в криптовалюту. Курсовой проект по курсу "Разработка ИИ-агентов" (Сбер Университет).
 
+## Telegram-бот
+
+- Прод-бот: [@crypto_invest_nsx_bot](https://t.me/crypto_invest_nsx_bot)
+
 ## Стек
 
 - **LLM**: GigaChat (через langchain-gigachat)
