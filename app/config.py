@@ -26,6 +26,29 @@ class Settings(BaseSettings):
     graph_debug_nodes: bool = Field(default=False, alias="GRAPH_DEBUG_NODES")
 
 
+def _require_non_empty(value: str | None, env_name: str) -> str:
+    """Проверяет, что обязательный env задан непустым значением."""
+
+    normalized = (value or "").strip()
+    if not normalized:
+        raise RuntimeError(f"Не задан обязательный параметр окружения: {env_name}")
+    return normalized
+
+
+def require_gigachat_credentials(settings: Settings | None = None) -> str:
+    """Возвращает GigaChat credentials или бросает понятную ошибку."""
+
+    cfg = settings or get_settings()
+    return _require_non_empty(cfg.gigachat_credentials, "GIGACHAT_CREDENTIALS")
+
+
+def require_telegram_bot_token(settings: Settings | None = None) -> str:
+    """Возвращает Telegram bot token или бросает понятную ошибку."""
+
+    cfg = settings or get_settings()
+    return _require_non_empty(cfg.telegram_bot_token, "TELEGRAM_BOT_TOKEN")
+
+
 @lru_cache
 def get_settings() -> Settings:
     """Возвращает кэшированный экземпляр настроек."""

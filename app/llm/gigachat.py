@@ -4,21 +4,21 @@ import inspect
 
 from langchain_gigachat import GigaChat
 
-from app.config import get_settings
+from app.config import get_settings, require_gigachat_credentials
 
 _llm_instance: GigaChat | None = None
-SETTINGS = get_settings()
 
 
 def get_llm() -> GigaChat:
     """Возвращает singleton-экземпляр GigaChat LLM."""
     global _llm_instance
     if _llm_instance is None:
+        settings = get_settings()
         _llm_instance = GigaChat(
-            credentials=SETTINGS.gigachat_credentials,
-            verify_ssl_certs=SETTINGS.gigachat_verify_ssl_certs,
-            model=SETTINGS.gigachat_model,
-            scope=SETTINGS.gigachat_scope,
+            credentials=require_gigachat_credentials(settings),
+            verify_ssl_certs=settings.gigachat_verify_ssl_certs,
+            model=settings.gigachat_model,
+            scope=settings.gigachat_scope,
         )
     return _llm_instance
 

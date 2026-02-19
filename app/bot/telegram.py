@@ -6,10 +6,7 @@ import httpx
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes, MessageHandler, filters
 
-from app.config import get_settings
-
-SETTINGS = get_settings()
-FASTAPI_URL = SETTINGS.fastapi_url
+from app.config import get_settings, require_telegram_bot_token
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -56,7 +53,6 @@ def _get_thread_id(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
 async def _reply_text(update: Update, text: str) -> None:
     """Отправляет ответ, разбивая длинные сообщения на части."""
 
-    # Telegram ограничивает длину сообщения 4096 символами
     if len(text) > 4096:
         for i in range(0, len(text), 4096):
             await update.message.reply_text(text[i : i + 4096])
@@ -70,11 +66,12 @@ async def _forward_to_api(
     """Пересылает запрос в FastAPI и отправляет ответ в Telegram."""
 
     thread_id = _get_thread_id(update, context)
+    fastapi_url = get_settings().fastapi_url
 
     async with httpx.AsyncClient(timeout=60) as client:
         try:
             resp = await client.post(
-                f"{FASTAPI_URL}/chat",
+                f"{fastapi_url}/chat",
                 json={"message": message_text, "thread_id": thread_id},
             )
             resp.raise_for_status()
@@ -136,10 +133,7 @@ async def reset_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 
 def main() -> None:
     """Запуск Telegram-бота."""
-    token = SETTINGS.telegram_bot_token
-    if not token:
-        print("Ошибка: TELEGRAM_BOT_TOKEN не задан в .env")
-        return
+    token = require_telegram_bot_token()
 
     application = ApplicationBuilder().token(token).build()
     application.add_handler(CommandHandler("start", start))
