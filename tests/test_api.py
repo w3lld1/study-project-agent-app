@@ -1,6 +1,7 @@
 """Тесты для FastAPI эндпоинтов."""
 
 import asyncio
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -37,7 +38,8 @@ async def test_health():
 
 
 @pytest.mark.asyncio
-async def test_chat_success(mock_graph):
+async def test_chat_success(mock_graph, monkeypatch):
+    monkeypatch.setenv("GIGACHAT_CREDENTIALS", "test-credentials")
     with patch("app.main.agent_graph", mock_graph):
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://test") as client:
@@ -54,7 +56,8 @@ async def test_chat_success(mock_graph):
 
 
 @pytest.mark.asyncio
-async def test_chat_auto_thread_id(mock_graph):
+async def test_chat_auto_thread_id(mock_graph, monkeypatch):
+    monkeypatch.setenv("GIGACHAT_CREDENTIALS", "test-credentials")
     with patch("app.main.agent_graph", mock_graph):
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://test") as client:
@@ -65,19 +68,21 @@ async def test_chat_auto_thread_id(mock_graph):
 
     assert resp.status_code == 200
     data = resp.json()
-    assert data["thread_id"]  # должен быть автоматически сгенерирован
+    assert data["thread_id"]
     assert len(data["thread_id"]) > 0
 
 
 @pytest.mark.asyncio
-async def test_chat_timeout(mock_graph):
+async def test_chat_timeout(mock_graph, monkeypatch):
+    monkeypatch.setenv("GIGACHAT_CREDENTIALS", "test-credentials")
+
     async def slow_ainvoke(*_args, **_kwargs):
         await asyncio.sleep(1)
 
     mock_graph.ainvoke = AsyncMock(side_effect=slow_ainvoke)
     with (
         patch("app.main.agent_graph", mock_graph),
-        patch("app.main.GRAPH_TIMEOUT_SECONDS", 0.01),
+        patch("app.main.get_settings", return_value=SimpleNamespace(graph_timeout_seconds=0.01)),
     ):
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://test") as client:

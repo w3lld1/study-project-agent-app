@@ -2,12 +2,10 @@
 
 import inspect
 import logging
-import os
 import time
 from collections.abc import Callable
 from typing import Any
 
-from dotenv import load_dotenv
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import END, StateGraph
 
@@ -23,17 +21,15 @@ from app.agent.nodes import (
 )
 from app.agent.router import classify_intent, route_by_intent, route_needs_search
 from app.agent.state import AgentState
-
-load_dotenv()
+from app.config import get_settings
 
 LOGGER = logging.getLogger(__name__)
-DEBUG_TRUE_VALUES = {"1", "true", "yes", "on"}
 
 
 def _is_debug_enabled() -> bool:
     """Возвращает признак включённого логирования шагов графа."""
-    value = os.getenv("GRAPH_DEBUG_NODES", "")
-    return value.strip().lower() in DEBUG_TRUE_VALUES
+
+    return get_settings().graph_debug_nodes
 
 
 def _ensure_debug_logger() -> None:
@@ -114,7 +110,6 @@ def build_graph() -> StateGraph:
 
     graph = StateGraph(AgentState)
 
-    # Добавляем узлы
     graph.add_node(
         "classify_intent", _wrap_step("classify_intent", classify_intent, debug_enabled)
     )
@@ -138,10 +133,8 @@ def build_graph() -> StateGraph:
         _wrap_step("generate_response", generate_response_node, debug_enabled),
     )
 
-    # Точка входа
     graph.set_entry_point("classify_intent")
 
-    # Основной роутер: 4 пути
     graph.add_conditional_edges(
         "classify_intent",
         _wrap_step("route_by_intent", route_by_intent, debug_enabled),
@@ -154,22 +147,12 @@ def build_graph() -> StateGraph:
         },
     )
 
-    # price -> generate_response -> END
     graph.add_edge("get_price", "generate_response")
-
-    # news -> generate_response -> END
     graph.add_edge("get_news", "generate_response")
-
-    # chat (web_search) -> generate_response -> END
     graph.add_edge("web_search", "generate_response")
-
-    # clarify_coin -> END
     graph.add_edge("clarify_coin", END)
-
-    # generate_response -> END
     graph.add_edge("generate_response", END)
 
-    # Ветка аналитики: вложенный роутер
     graph.add_conditional_edges(
         "get_analytics_data",
         _wrap_step("route_needs_search", route_needs_search, debug_enabled),
@@ -179,14 +162,11 @@ def build_graph() -> StateGraph:
         },
     )
 
-    # analytics_search -> analyze -> END
     graph.add_edge("analytics_search", "analyze")
     graph.add_edge("analyze", END)
 
-    # Компиляция с MemorySaver
     memory = MemorySaver()
     return graph.compile(checkpointer=memory)
 
 
-# Синглтон графа
 agent_graph = build_graph()

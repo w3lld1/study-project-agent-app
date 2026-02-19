@@ -11,8 +11,10 @@ from app.main import app
 
 
 @pytest.mark.asyncio
-async def test_e2e_multiturn_same_thread_keeps_coin_context():
+async def test_e2e_multiturn_same_thread_keeps_coin_context(monkeypatch):
     """В одном thread_id вторая реплика с местоимением должна взять прошлую монету."""
+    monkeypatch.setenv("GIGACHAT_CREDENTIALS", "test-credentials")
+
     graph = build_graph()
     mock_llm = MagicMock()
     mock_llm.ainvoke = AsyncMock(
@@ -78,8 +80,10 @@ async def test_e2e_multiturn_same_thread_keeps_coin_context():
 
 
 @pytest.mark.asyncio
-async def test_e2e_restart_with_memorysaver_loses_coin_context():
+async def test_e2e_restart_with_memorysaver_loses_coin_context(monkeypatch):
     """После имитации рестарта process-level память теряется и агент просит уточнить монету."""
+    monkeypatch.setenv("GIGACHAT_CREDENTIALS", "test-credentials")
+
     first_graph = build_graph()
     second_graph = build_graph()
     mock_llm = MagicMock()

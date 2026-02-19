@@ -1,11 +1,8 @@
 """NewsAPI — получение новостей по криптовалютам."""
 
-import os
-
 import httpx
-from dotenv import load_dotenv
 
-load_dotenv()
+from app.config import get_settings
 
 NEWSAPI_BASE_URL = "https://newsapi.org/v2"
 NEWSAPI_MAX_PAGE_SIZE = 100
@@ -28,7 +25,7 @@ def _build_news_query(query: str) -> str:
 
 async def get_crypto_news(query: str, max_results: int = 5) -> list[dict]:
     """Получает последние новости по запросу через NewsAPI."""
-    api_key = os.getenv("NEWS_API_KEY")
+    api_key = get_settings().news_api_key
     if not api_key:
         return [{"error": "NEWS_API_KEY не задан в .env"}]
 
