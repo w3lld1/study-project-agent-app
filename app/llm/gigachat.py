@@ -1,14 +1,13 @@
 """Настройка GigaChat LLM."""
 
 import inspect
-import os
 
-from dotenv import load_dotenv
 from langchain_gigachat import GigaChat
 
-load_dotenv()
+from app.config import get_settings
 
 _llm_instance: GigaChat | None = None
+SETTINGS = get_settings()
 
 
 def get_llm() -> GigaChat:
@@ -16,10 +15,10 @@ def get_llm() -> GigaChat:
     global _llm_instance
     if _llm_instance is None:
         _llm_instance = GigaChat(
-            credentials=os.getenv("GIGACHAT_CREDENTIALS"),
-            verify_ssl_certs=False,
-            model="GigaChat-2-Max",
-            scope="GIGACHAT_API_B2B",
+            credentials=SETTINGS.gigachat_credentials,
+            verify_ssl_certs=SETTINGS.gigachat_verify_ssl_certs,
+            model=SETTINGS.gigachat_model,
+            scope=SETTINGS.gigachat_scope,
         )
     return _llm_instance
 

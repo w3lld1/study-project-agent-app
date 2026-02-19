@@ -49,6 +49,9 @@ TELEGRAM_BOT_TOKEN=ваш_токен_телеграм_бота
 FASTAPI_URL=http://localhost:8000
 GRAPH_TIMEOUT_SECONDS=30
 GRAPH_DEBUG_NODES=false
+GIGACHAT_MODEL=GigaChat-2-Max
+GIGACHAT_SCOPE=GIGACHAT_API_B2B
+GIGACHAT_VERIFY_SSL_CERTS=false
 ```
 
 - `GRAPH_TIMEOUT_SECONDS` — таймаут обработки одного запроса графом (в секундах). При превышении API вернёт `504`.

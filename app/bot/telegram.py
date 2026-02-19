@@ -1,16 +1,15 @@
 """Telegram-бот для крипто-консультанта."""
 
-import os
 import uuid
 
 import httpx
-from dotenv import load_dotenv
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes, MessageHandler, filters
 
-load_dotenv()
+from app.config import get_settings
 
-FASTAPI_URL = os.getenv("FASTAPI_URL", "http://localhost:8000")
+SETTINGS = get_settings()
+FASTAPI_URL = SETTINGS.fastapi_url
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -137,7 +136,7 @@ async def reset_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 
 def main() -> None:
     """Запуск Telegram-бота."""
-    token = os.getenv("TELEGRAM_BOT_TOKEN")
+    token = SETTINGS.telegram_bot_token
     if not token:
         print("Ошибка: TELEGRAM_BOT_TOKEN не задан в .env")
         return

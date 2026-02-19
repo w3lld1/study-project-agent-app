@@ -2,12 +2,10 @@
 
 import inspect
 import logging
-import os
 import time
 from collections.abc import Callable
 from typing import Any
 
-from dotenv import load_dotenv
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import END, StateGraph
 
@@ -23,17 +21,16 @@ from app.agent.nodes import (
 )
 from app.agent.router import classify_intent, route_by_intent, route_needs_search
 from app.agent.state import AgentState
-
-load_dotenv()
+from app.config import get_settings
 
 LOGGER = logging.getLogger(__name__)
-DEBUG_TRUE_VALUES = {"1", "true", "yes", "on"}
+SETTINGS = get_settings()
 
 
 def _is_debug_enabled() -> bool:
     """Возвращает признак включённого логирования шагов графа."""
-    value = os.getenv("GRAPH_DEBUG_NODES", "")
-    return value.strip().lower() in DEBUG_TRUE_VALUES
+
+    return SETTINGS.graph_debug_nodes
 
 
 def _ensure_debug_logger() -> None:

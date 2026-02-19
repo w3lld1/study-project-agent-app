@@ -1,7 +1,6 @@
 """FastAPI-приложение: эндпоинты крипто-консультанта."""
 
 import asyncio
-import os
 import uuid
 from contextlib import asynccontextmanager
 
@@ -10,6 +9,7 @@ from langchain_core.messages import HumanMessage
 from pydantic import BaseModel
 
 from app.agent.graph import agent_graph
+from app.config import get_settings
 from app.llm.gigachat import close_llm
 
 @asynccontextmanager
@@ -27,7 +27,8 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-GRAPH_TIMEOUT_SECONDS = float(os.getenv("GRAPH_TIMEOUT_SECONDS", "30"))
+SETTINGS = get_settings()
+GRAPH_TIMEOUT_SECONDS = SETTINGS.graph_timeout_seconds
 
 
 class ChatRequest(BaseModel):
