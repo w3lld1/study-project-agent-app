@@ -71,6 +71,33 @@ uvicorn app.main:app --reload
 python -m app.bot.telegram
 ```
 
+## Docker (API + Telegram-бот)
+
+1. Скопируйте пример окружения и заполните значения:
+
+```bash
+cp .env.example .env
+```
+
+2. Запустите контейнеры:
+
+```bash
+docker compose up -d --build
+```
+
+3. Проверка:
+
+```bash
+docker compose ps
+curl http://localhost:8000/health
+```
+
+Остановка:
+
+```bash
+docker compose down
+```
+
 ## Тесты
 
 Рекомендуемый запуск (с защитой от параллельного запуска несколькими инстансами агента):
